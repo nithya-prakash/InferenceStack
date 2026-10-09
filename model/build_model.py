@@ -97,4 +97,5 @@ def main():
     print("threshold", thr, "onnx MB", ONNX.stat().st_size / 1e6)
 
 
-main()
+if __name__ == "__main__":
+    main()
