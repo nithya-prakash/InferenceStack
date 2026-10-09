@@ -1,30 +1,58 @@
 # InferenceStack
 
-Serve an industrial anomaly-detection model through a **C++17 ONNX Runtime engine, a Java 21 Spring Boot gateway and PostgreSQL/dbt analytics**, with every layer parity-tested against the Python reference.
+**End-to-end serving platform for an industrial anomaly-detection model.** A PaDiM-style detector trained on MVTec AD `bottle` images is exported to ONNX and served through a C++17 ONNX Runtime engine, a Java 21 Spring Boot gateway (API-key auth, rate limiting, caching, request telemetry) and a PostgreSQL + dbt analytics layer with a Streamlit dashboard. Each layer is tested against the Python reference, and the full stack runs with one Docker Compose command.
 
-![License: MIT](https://img.shields.io/badge/license-MIT-green) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Java 21](https://img.shields.io/badge/Java-21-orange) ![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)
-<!-- CI badge: add after the first push, once the workflow has actually run -->
+[![CI](https://github.com/nithya-prakash/InferenceStack/actions/workflows/ci.yml/badge.svg)](https://github.com/nithya-prakash/InferenceStack/actions/workflows/ci.yml) ![License: MIT code](https://img.shields.io/badge/code-MIT-green) ![Model: non-commercial](https://img.shields.io/badge/model-non--commercial-orange) ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![Java 21](https://img.shields.io/badge/Java-21-orange) ![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)
 
 ![Demo](docs/demo.gif)
 
 *Shows: a real request through gateway and engine (cache miss, cache hit, rejected without a key) and the Streamlit dashboard reading the dbt marts after 153 synthetic requests on a laptop. Does not show: a hosted deployment, real factory traffic, or time series (all synthetic traffic landed in one hour, so the trend charts have a single point).*
 
+> **Licensing in one line:** the source code is MIT; the trained model in `model/artifacts/` is derived from MVTec AD (CC BY-NC-SA 4.0) and is **non-commercial only**. Details in [License](#license).
+
+## Engineering Highlights
+
+- **Single owner for each transformation.** Resize/crop lives in one Python utility, the engine only validates and decodes a fixed 224x224 PNG, and normalization and scoring are inside the ONNX graph, so no step is duplicated or can drift between languages.
+- **Parity-tested at every boundary.** ONNX vs PyTorch, C++ engine vs Python reference, and gateway-through-engine vs Python reference, plus a Compose end-to-end check.
+- **Engine safety.** Fail-fast startup (a failed model load never reports ready), header-level PNG validation before any pixel allocation, a 1 MiB body limit, and a shared thread-safe session tested with concurrent requests.
+- **Gateway controls.** API keys configured only as SHA-256 digests and compared in constant time, per-key token-bucket rate limiting, a cache keyed on model version plus image hash that is cleared when the engine reports a new version, downstream timeouts mapped to 502/504, and request ids on every response.
+- **Telemetry by design.** One parameterized row per request with no keys or image bytes stored; a failed insert never fails the request (logged and counted, that row is lost).
+- **Verified analytics.** dbt marts are checked against hand-computed values under a non-UTC session time zone; percentiles are computed from raw rows, never averaged.
+- **Measured, not assumed.** Benchmarking exposed a ~40 ms Nagle/delayed-ACK stall in the server (fixed, re-measured), and showed that C++ is not faster than Python ORT for the model itself.
+
 ## Results
 
-Numbers come from the scripts named in the last column; hardware for latency: Apple M4, Docker VM with 10 CPUs. The test split is MVTec AD's official `bottle` split (written by MVTec, not by me).
+Numbers come from the scripts in the last column. Latency hardware: Apple M4, Docker VM with 10 CPUs. The test split is MVTec AD's official `bottle` split (written by MVTec, not by me).
 
-| What was measured | Result | Size | Script |
+**Model quality** (official test split, used once for the final numbers)
+
+| Metric | Result | Size | Script |
 |---|---|---|---|
-| Image-level AUROC (PyTorch and ONNX identical) | **0.9873** | 83 test images (63 defective, 20 good) | `model/build_model.py` -> `model/artifacts/model_meta.json` |
-| Defect recall / false-positive rate at the calibrated threshold (18.30) | **0.889** (56/63) / **0.000** (0/20) | same 83 images | same |
+| Image-level AUROC (PyTorch and ONNX identical) | **0.9873** | 83 images (63 defective, 20 good) | `model/build_model.py` -> `model/artifacts/model_meta.json` |
+| Defect recall at the calibrated threshold (18.30) | **0.889** (56/63) | 63 defective images | same |
+| False-positive rate at the threshold | **0.000** (0/20) | 20 good images | same |
+
+**Correctness and tests**
+
+| Check | Result | Size | Command |
+|---|---|---|---|
 | ONNX vs PyTorch reference, max abs difference (scores and heatmaps) | 5.15e-05 (tolerance rtol 1e-4, atol 1e-3) | 6 synthetic images | `python model/test_parity.py` |
 | C++ engine tests | 25/25 pass (arm64; amd64 emulated on the M4) | 25 cases | `engine/Dockerfile --target test` |
 | Gateway tests (incl. real engine + PostgreSQL) | 19/19 pass | 5 unit + 14 integration | `gateway/run-tests.sh` |
 | dbt build + tests; marts vs hand-computed values | 44/44 pass; all 6 marts match | 15-row fixture | `analytics/scripts/verify.sh` |
-| Compose end-to-end | passed (6 reference images through the gateway match Python scores, 401, dbt, dashboard) | full stack | `scripts/e2e.sh` |
-| Latency, in-process, 1 thread (mean / median / p95 / p99 ms) | Linux container: Python ORT 58.1 / 57.8 / 59.6 / 61.6; C++ engine `Run()` 58.8 / 58.5 / 60.5 / 66.1; C++ HTTP end-to-end 59.3 / 58.9 / 61.1 / 66.8. macOS host: PyTorch 26.7 / 26.2 / 30.3 / 33.1; Python ORT 28.5 / 28.4 / 29.3 / 29.7 | 300 timed calls, 30 warm-up, one run | `benchmarks/bench.py` ([method](benchmarks/README.md)) |
-| Engine throughput / memory | 16.9 req/s (1 client), 51.5 req/s (4 clients); RSS about 54 MB idle, 97 MB after load | 10 s runs | `benchmarks/bench.py http` |
-| Gateway throughput, x86_64 hardware, GitHub Actions run | **not measured** | | |
+| Compose end-to-end | passed (6 reference images through the gateway match Python scores, 401 without a key, dbt, dashboard) | full stack | `scripts/e2e.sh` |
+
+**Performance** (single run per row, 300 timed calls after 30 warm-up, 1 thread; method in [benchmarks/README.md](benchmarks/README.md); command `benchmarks/bench.py`)
+
+| Where | What | mean / median / p95 / p99 (ms) |
+|---|---|---|
+| Linux container | Python ORT, in-process | 58.1 / 57.8 / 59.6 / 61.6 |
+| Linux container | C++ engine `Run()` only | 58.8 / 58.5 / 60.5 / 66.1 |
+| Linux container | C++ engine HTTP end-to-end | 59.3 / 58.9 / 61.1 / 66.8 |
+| macOS host | PyTorch, in-process | 26.7 / 26.2 / 30.3 / 33.1 |
+| macOS host | Python ORT, in-process | 28.5 / 28.4 / 29.3 / 29.7 |
+
+Engine throughput: 16.9 req/s (1 client), 51.5 req/s (4 clients), 10 s runs. Engine memory: RSS about 54 MB idle, 97 MB after load.
 
 **Honest reading.** Strong: the whole path is tested end to end, and the numbers are reproducible with the listed commands. Weak: the accuracy claim rests on one product category and 83 images; with 20 good images, "0 false positives" does not mean the true false-positive rate is 0; the threshold is the maximum over only 42 calibration images. Parity tests prove ONNX equals PyTorch, not that either is accurate. **C++ is not faster than Python ORT for the model itself** (same runtime, 58.8 vs 58.1 ms); its benefit here is a small dependency-light server with about 0.5 ms request overhead. Host and container latencies are not comparable.
 
@@ -52,12 +80,12 @@ Other settings (timeouts, cache size/TTL, image size limit, rate limits) are env
 
 ```mermaid
 flowchart LR
-  C[Client] -->|PNG + X-API-Key| G[Java gateway :8080<br/>auth, rate limit, cache, validation]
-  G -->|PNG| E[C++ engine :8081<br/>ONNX Runtime]
-  E -->|anomaly score| G
-  G -->|telemetry rows| P[(PostgreSQL 16)]
-  P --> D[dbt: staging views and marts]
-  D --> S[Streamlit dashboard :8501]
+    C["Client"] -->|"PNG + X-API-Key"| G["Java gateway :8080<br/>auth, rate limit, cache, validation"]
+    G -->|"PNG"| E["C++ engine :8081<br/>ONNX Runtime"]
+    E -->|"anomaly score"| G
+    G -->|"telemetry rows"| P[("PostgreSQL 16")]
+    P --> D["dbt: staging views and marts"]
+    D --> S["Streamlit dashboard :8501"]
 ```
 Stack: Python 3.12 / PyTorch 2.14.1 / ONNX 1.23.2 (model), C++17 / ONNX Runtime 1.31.0 / cpp-httplib 0.18.3 / GoogleTest 1.15.2 (engine), Java 21 / Spring Boot 3.5.16 / Bucket4j 8.17.0 / Caffeine / Flyway (gateway), PostgreSQL 16 / dbt-postgres 1.11.0 / Streamlit 1.65.0 (analytics), Docker Compose, GitHub Actions.
 Model: PaDiM-style anomaly detector (frozen ResNet18 features + per-position Gaussian statistics) fitted on defect-free MVTec AD `bottle` images; the score is the maximum Mahalanobis distance over a 28x28 feature grid. Preprocessing is owned once: `model/prepare_image.py` resizes/crops to 224x224 RGB PNG; the engine only validates and decodes; the ONNX graph does scaling and normalization. Details: [model/MODEL_CARD.md](model/MODEL_CARD.md).
@@ -95,20 +123,15 @@ Model: PaDiM-style anomaly detector (frozen ResNet18 features + per-position Gau
 | Downstream timeouts and error mapping, request ids, PostgreSQL telemetry | implemented, tested |
 | dbt staging + 6 marts + tests, traffic generator, Streamlit dashboard | implemented, tested (fixture) and run on synthetic traffic |
 | Docker Compose stack and end-to-end script | implemented, run locally |
-| GitHub Actions workflow | written and linted with `actionlint`, **never run on GitHub** |
-| TLS, key rotation/revocation | not implemented |
-| Shared (multi-instance) rate limit and cache | not implemented (in-memory per instance) |
-| Telemetry retry queue | not implemented (a failed insert loses that row, logged and counted) |
-| More than one MVTec category, heatmap in the API, localization | not implemented |
-| Hosted demo, load test, decoder fuzzing, image scanning | not done |
+| GitHub Actions workflow | implemented; all 5 jobs passed on GitHub-hosted x86_64 runners (run 37943194993, commit c0468aa), including model parity, engine tests, gateway tests, dbt verify and Compose end-to-end |
 
 ## Limitations
 
 - One category and 83 test images; threshold calibrated on 42 images; no confidence intervals; trained and evaluated on clean lab images only.
-- Single-run benchmarks on one laptop (arm64); x86_64 engine tests ran emulated, and the gateway/analytics/e2e jobs only on arm64.
-- Gateway: API keys are bearer secrets without TLS; rate limit and cache are per instance and reset on restart; a cache can serve old results after a model swap the gateway has not observed (until TTL).
+- Single-run benchmarks on one laptop (arm64). The engine tests also passed emulated amd64 on that laptop and, with the gateway, analytics and e2e jobs, once on GitHub's x86_64 runners; benchmarks were not run on x86_64.
+- Gateway: API keys are bearer secrets without TLS; rate limit and cache are per instance and reset on restart; a cache can serve old results after a model swap the gateway has not observed (until TTL); a failed telemetry insert loses that row.
 - Analytics: marts are full-refresh; synthetic traffic only; the dashboard has no auth and Compose uses one database user.
-- ONNX Runtime prints two telemetry init warnings at startup (events are disabled in code).
+- No load test, decoder fuzzing or image scanning has been run; ONNX Runtime prints two telemetry init warnings at startup (events are disabled in code).
 - No hosted demo. Running in containers does not make this production-ready.
 
 ## Repository layout
@@ -134,12 +157,20 @@ docs/        demo.gif, INTERVIEW_GUIDE.md
 | Analytics | `analytics/scripts/verify.sh` |
 | Whole stack | `scripts/e2e.sh` |
 | Workflow syntax | `docker run --rm -v "$PWD":/r -w /r rhysd/actionlint:1.7.7` |
-No formatter, linter or type checker is configured for C++, Java or Python. CI (`.github/workflows/ci.yml`) runs: model parity, engine tests, gateway tests, analytics verify, then Compose e2e; it has not been observed running yet.
+No formatter, linter or type checker is configured for C++, Java or Python. CI (`.github/workflows/ci.yml`) runs: model parity, engine tests, gateway tests, analytics verify, then Compose e2e.
 
 ## Roadmap
 
-Push and observe the first CI run, then add more MVTec categories, a shared rate limit/cache, TLS and key rotation, and a read-only dashboard database role.
+More MVTec categories, a shared rate limit and cache, TLS and key rotation, and a read-only dashboard database role.
 
 ## License
 
-Code: [MIT](LICENSE). The trained model in `model/artifacts/` is derived from MVTec AD (CC BY-NC-SA 4.0) and is for non-commercial use only; see [model/MODEL_CARD.md](model/MODEL_CARD.md).
+| Part | License |
+|---|---|
+| Source code (engine, gateway, analytics, scripts, docs) | [MIT](LICENSE) |
+| Trained model and statistics (`model/artifacts/`) | Derived from MVTec AD, **CC BY-NC-SA 4.0**: non-commercial use only, attribution required, share-alike. MIT does not override this. |
+| MVTec AD dataset | Not included in this repository (download from MVTec; same CC BY-NC-SA 4.0 terms). Committed test images are synthetic. |
+| ResNet18 ImageNet weights | Downloaded from torchvision when the model is built and embedded in the ONNX file; torchvision's/ImageNet's own terms apply. |
+| Third-party libraries | Keep their own licenses. |
+
+Attribution: Bergmann et al., "MVTec AD - A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection", CVPR 2019. See also [model/MODEL_CARD.md](model/MODEL_CARD.md).
