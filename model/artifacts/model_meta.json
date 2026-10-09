@@ -1,0 +1,37 @@
+{
+ "model_version": "padim-bottle-v1",
+ "onnx_sha256": "f17fb2f8a49ef64bfa25a9818df9d69ef75b927370c5ed59dbeb3d90296f0f6e",
+ "category": "bottle",
+ "threshold": 18.296588897705078,
+ "input": {
+  "name": "image",
+  "dtype": "float32",
+  "layout": "NCHW",
+  "shape": [
+   "batch",
+   3,
+   224,
+   224
+  ],
+  "range": "0..255 raw pixels"
+ },
+ "output": {
+  "score": "float32 [batch], max Mahalanobis distance",
+  "heatmap": "float32 [batch,28,28]"
+ },
+ "split": {
+  "seed": 42,
+  "fit_good": 167,
+  "calibration_good": 42,
+  "test": "official MVTec test split"
+ },
+ "metrics_official_test_split": {
+  "image_auroc_python": 0.9873015873015873,
+  "image_auroc_onnx": 0.9873015873015873,
+  "tpr_at_threshold": 0.8888888888888888,
+  "fpr_at_threshold": 0.0,
+  "test_images": 83,
+  "test_defective": 63
+ },
+ "license": "MVTec AD: CC BY-NC-SA 4.0 (non-commercial); see MODEL_CARD.md"
+}
