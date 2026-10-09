@@ -39,6 +39,18 @@ Prepare your own image (any size/format) with `python model/prepare_image.py in.
 
 **Configuration (`.env`, see `.env.example`):** `POSTGRES_PASSWORD`, `GATEWAY_API_KEY` (client key), `GATEWAY_API_KEY_SHA256` (the only form the gateway sees). Gateway/engine/dbt settings are environment variables documented in each component's README. Only ports 8080 (gateway) and 8501 (dashboard) are published, bound to 127.0.0.1.
 
+## Repository structure
+```
+model/       Python: padim.py (scorer), build_model.py (fit/export/reference), prepare_image.py, test_parity.py, MODEL_CARD.md, artifacts/ (ONNX + metadata), test_data/ (synthetic PNGs + reference.json)
+engine/      C++17: src/, include/, tests/ (GoogleTest), third_party/ (stb), CMakeLists.txt, Dockerfile
+gateway/     Java 21 Spring Boot: src/main (auth, ratelimit, cache, engine, telemetry, web), src/test, db/migration, pom.xml, Dockerfile, run-tests.sh
+analytics/   dbt_project/ (staging + marts + tests), dashboard/ (Streamlit), scripts/ (verify.sh, generate_traffic.py), tests/ (fixture + expected values)
+benchmarks/  bench.py and measured results
+scripts/     init-env.sh, e2e.sh
+docs/        INTERVIEW_GUIDE.md
+.github/workflows/ci.yml   docker-compose.yml   .env.example   LICENSE
+```
+
 ## Model contract
 Input to the **API**: raw bytes of a **224x224, 8-bit RGB PNG** (`Content-Type: image/png`, max 1 MiB). Output: `anomaly_score` (higher = more anomalous; max Mahalanobis distance over a 28x28 feature grid), `is_anomalous = score > threshold` (threshold 18.2966, calibrated as the max score over 42 held-out good training images), `model_version`.
 Preprocessing ownership (nothing is done twice): the Python utility `model/prepare_image.py` converts to RGB, resizes to 256 (bilinear) and center-crops 224; the C++ engine only validates and decodes the PNG into a CHW float32 tensor with raw 0..255 values; the ONNX graph does `/255`, ImageNet normalization and everything after. Details, limitations and license: [model/MODEL_CARD.md](model/MODEL_CARD.md).
@@ -71,6 +83,9 @@ macOS host: PyTorch 26.7 / 26.2 / 30.3 / 33.1; Python ORT 28.5 / 28.4 / 29.3 / 2
 - **Java for the API layer:** the cross-cutting concerns (auth, rate limiting, caching, request ids, timeouts, persistence) are what Spring Boot is good at. Keys are stored as SHA-256 digests and compared in constant time; telemetry is best effort (a DB outage must not take predictions down); cache keys include the model version and a version change drops the cache.
 - **SQL/dbt for analytics:** one raw table owned by the gateway's migration, derived tables owned by dbt; percentiles computed from raw rows; metrics defined explicitly with tests and hand-computed fixtures.
 - **Anomaly detection over a classifier:** MVTec's training set has no defective images, so a model of "normal" fits the data and gives a clean evaluation protocol.
+
+## License
+Code: MIT (see `LICENSE`). The trained model artifact (`model/artifacts/`) is derived from MVTec AD data (CC BY-NC-SA 4.0) and is for **non-commercial use only**; MIT does not override that. Third-party components keep their own licenses.
 
 ## Known limitations
 One MVTec category (`bottle`), 83 test images, threshold from 42 samples; no TLS; API keys are bearer secrets with no rotation/revocation; rate limit and cache are in-memory per gateway instance; telemetry rows can be lost if the insert fails; marts are full-refresh with no scheduling; the dashboard has no auth and Compose uses one database user for everything; Docker images run as non-root but are not hardened or scanned; ONNX Runtime prints two telemetry init warnings at startup (events are disabled in code). **Running in containers does not make this production-ready.**
