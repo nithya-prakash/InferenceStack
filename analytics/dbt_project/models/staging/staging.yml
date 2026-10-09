@@ -1,0 +1,19 @@
+version: 2
+models:
+  - name: stg_request_log
+    columns:
+      - name: request_id
+        tests: [unique, not_null]
+      - name: received_date
+        tests: [not_null]
+      - name: api_key_id
+        tests: [not_null]
+      - name: outcome
+        tests:
+          - accepted_values: {arguments: {values: [success, client_error, server_error]}}
+      - name: error_category
+        tests:
+          - not_null
+    tests:
+      - expression_is_true: {arguments: {expression: "is_success = (error_category = 'none')"}}
+      - expression_is_true: {arguments: {expression: "not cache_hit or is_success"}}

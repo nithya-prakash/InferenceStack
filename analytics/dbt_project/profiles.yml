@@ -1,0 +1,12 @@
+inferencestack:
+  target: default
+  outputs:
+    default:
+      type: postgres
+      host: "{{ env_var('DB_HOST', 'localhost') }}"
+      port: "{{ env_var('DB_PORT', '5432') | as_number }}"
+      dbname: "{{ env_var('DB_NAME', 'inferencestack') }}"
+      user: "{{ env_var('DB_USER', 'inferencestack') }}"
+      password: "{{ env_var('DB_PASSWORD') }}"
+      schema: analytics
+      threads: 2

@@ -1,0 +1,15 @@
+name: inferencestack
+version: "0.1.0"
+config-version: 2
+profile: inferencestack
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+models:
+  inferencestack:
+    staging:
+      +schema: analytics_staging
+      +materialized: view
+    marts:
+      +schema: analytics
+      +materialized: table

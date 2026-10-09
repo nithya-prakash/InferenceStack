@@ -1,0 +1,34 @@
+version: 2
+models:
+  - name: mart_request_volume
+    columns:
+      - {name: received_hour, tests: [unique, not_null]}
+      - {name: requests, tests: [not_null, {expression_is_true: {arguments: {expression: "requests > 0"}}}]}
+    tests:
+      - expression_is_true: {arguments: {expression: "requests_ma3 > 0"}}
+  - name: mart_latency_percentiles
+    columns:
+      - {name: scope, tests: [{accepted_values: {arguments: {values: [all, cache_hit, engine_served]}}}]}
+      - {name: sample_size, tests: [{expression_is_true: {arguments: {expression: "sample_size > 0"}}}]}
+    tests:
+      - unique_combination: {arguments: {columns: [received_date, scope]}}
+      - expression_is_true: {arguments: {expression: "p50_ms <= p95_ms and p95_ms <= p99_ms"}}
+  - name: mart_error_rate
+    columns:
+      - {name: received_date, tests: [unique, not_null]}
+    tests:
+      - expression_is_true: {arguments: {expression: "server_error_rate between 0 and 1 and client_error_rate between 0 and 1 and failure_rate between 0 and 1"}}
+      - expression_is_true: {arguments: {expression: "server_errors + client_errors <= requests"}}
+  - name: mart_requests_per_key_daily
+    tests:
+      - unique_combination: {arguments: {columns: [received_date, api_key_id]}}
+      - expression_is_true: {arguments: {expression: "successes + rate_limited <= requests"}}
+  - name: mart_cache_hit_rate
+    columns:
+      - {name: received_date, tests: [unique, not_null]}
+    tests:
+      - expression_is_true: {arguments: {expression: "cache_hit_rate is null or cache_hit_rate between 0 and 1"}}
+      - expression_is_true: {arguments: {expression: "cache_hits <= successful_requests"}}
+  - name: mart_outcomes_over_time
+    tests:
+      - unique_combination: {arguments: {columns: [received_hour, outcome, error_category]}}

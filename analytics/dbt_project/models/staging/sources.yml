@@ -1,0 +1,23 @@
+version: 2
+sources:
+  - name: gateway
+    description: Raw telemetry written by the Java gateway (Flyway migration V1__request_log.sql). dbt never modifies it.
+    schema: public
+    tables:
+      - name: request_log
+        columns:
+          - name: request_id
+            tests: [unique, not_null]
+          - name: received_at
+            tests: [not_null]
+          - name: http_status
+            tests:
+              - not_null
+              - expression_is_true: {arguments: {expression: "http_status between 100 and 599"}}
+          - name: outcome
+            tests:
+              - accepted_values: {arguments: {values: [success, client_error, server_error]}}
+          - name: gateway_latency_ms
+            tests:
+              - not_null
+              - expression_is_true: {arguments: {expression: "gateway_latency_ms >= 0"}}

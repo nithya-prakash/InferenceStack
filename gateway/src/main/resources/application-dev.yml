@@ -5,3 +5,11 @@ gateway:
     - id: dev-client
       sha256: 3ccca3169ad43e18c1e780811e1dd2b6798bea174bb608179e1a3a0fddc73152
       requests-per-minute: 600
+    # Keys used by analytics/scripts/generate_traffic.py (synthetic traffic is identifiable by these ids).
+    # Keys: synthetic-load-key-not-a-secret / synthetic-limited-key-not-a-secret
+    - id: synthetic-load
+      sha256: f1220eb43be83c73ae12baf258cd0b9fe31038d25c13df3bb8eb1a9fc0b5157c
+      requests-per-minute: 6000
+    - id: synthetic-limited
+      sha256: 360cd57f51430229b871e1a05c63e0210084cd2f15ac19d007ceb9ad5cf328ec
+      requests-per-minute: 5

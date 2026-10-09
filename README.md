@@ -1,7 +1,7 @@
 # InferenceStack
 
 Industrial vision inference platform: C++17 (ONNX Runtime) engine, Java 21 (Spring Boot) gateway, PostgreSQL/dbt analytics.
-**Status:** Phase 0 (model), Phase 1 (C++ engine), Phase 2 (Java gateway) complete; analytics, dashboard, compose and CI not started.
+**Status:** Phases 0-3 complete (model, C++ engine, Java gateway, dbt analytics + Streamlit dashboard); Docker Compose, CI and final docs not started.
 
 ## Model migration note
 Early commits (`ff0898d`) exported a predictive-maintenance RUL CNN. That model was replaced by a PaDiM-style anomaly detector
