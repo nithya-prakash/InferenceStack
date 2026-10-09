@@ -1,0 +1,20 @@
+server:
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/inferencestack}
+    username: ${DB_USER:inferencestack}
+    password: ${DB_PASSWORD:}
+gateway:
+  engine:
+    url: ${ENGINE_URL:http://localhost:8081}
+    connect-timeout: 500ms
+    read-timeout: 5s
+  cache:
+    ttl: 10m
+    max-size: 1000
+  max-image-bytes: 1048576
+  # api-keys: supply via environment, e.g. GATEWAY_API_KEYS_0_ID, GATEWAY_API_KEYS_0_SHA256, GATEWAY_API_KEYS_0_REQUESTS_PER_MINUTE

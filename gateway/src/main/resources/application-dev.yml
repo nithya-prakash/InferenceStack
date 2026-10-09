@@ -1,0 +1,7 @@
+# Local development ONLY. The plaintext key below is public on purpose (it protects nothing); never reuse it.
+# Dev key: dev-local-key-not-a-secret
+gateway:
+  api-keys:
+    - id: dev-client
+      sha256: 3ccca3169ad43e18c1e780811e1dd2b6798bea174bb608179e1a3a0fddc73152
+      requests-per-minute: 600
