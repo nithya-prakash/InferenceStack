@@ -6,7 +6,7 @@
 ```bash
 analytics/scripts/verify.sh
 ```
-Starts PostgreSQL 16, applies the migration, loads `tests/fixture.sql` (15 rows, including one written with a +02 offset), runs `dbt build` (staging + 6 marts + tests = 44 nodes) with a **non-UTC session time zone** (`PGTZ=America/New_York`), diffs every mart against `tests/expected.txt` (values computed by hand in the comments of this README's metric table), then runs the dashboard headlessly (Streamlit `AppTest`) against the marts.
+Starts PostgreSQL 16, applies the migration, loads `tests/fixture.sql` (15 rows, including one written with a +02 offset), runs `dbt build` (staging + 6 marts + tests = 44 nodes) with a **non-UTC session time zone** (`PGTZ=America/New_York`), diffs every mart against `tests/expected.txt` (values computed by hand before running dbt, using the metric definitions below), then runs the dashboard headlessly (Streamlit `AppTest`) against the marts.
 
 ## Run against the real stack
 ```bash
