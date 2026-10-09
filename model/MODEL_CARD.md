@@ -31,7 +31,7 @@ no robustness testing. Not suitable for real inspection decisions.
 Dataset: MVTec AD, © MVTec Software GmbH, **CC BY-NC-SA 4.0** (non-commercial, attribution, share-alike).
 Bergmann et al., "MVTec AD – A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection", CVPR 2019.
 The statistics in the ONNX file are derived from that data, so the model artifact is for **non-commercial use** under the same license.
-The dataset itself is not in this repo; committed test images are synthetic. ResNet18 ImageNet weights come from torchvision.
+The dataset itself is not in this repo; committed test images are synthetic. The ResNet18 ImageNet weights (torchvision `IMAGENET1K_V1`) are downloaded when the model is built and embedded in the ONNX file; torchvision's code is BSD-licensed, but its metadata states no license for the weights and the ImageNet data has its own terms. These terms have not been verified here; review them before any use beyond personal or portfolio purposes.
 
 ## Reproduce
 `python model/build_model.py` (needs `data/mvtec/bottle`), then `python model/test_parity.py` (needs only the committed files).

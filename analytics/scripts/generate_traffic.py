@@ -3,7 +3,8 @@
 
 Every request goes through the real gateway/engine/database path, and uses the public dev keys
 `synthetic-load` / `synthetic-limited` (ids visible in the telemetry), so synthetic rows are identifiable and no real
-key is needed. Mixture (weights, relative): success (new image), cache_hit (resend an earlier image), invalid (garbage,
+key is needed. With --image-dir, success/cache_hit traffic replays real images (the request pattern is still simulated).
+Mixture (weights, relative): success (new image), cache_hit (resend an earlier image), invalid (garbage,
 wrong size, grayscale, wrong content-type, missing/wrong key), rate_limited (burst on the 5/min key).
 Downstream failures are NOT simulated by the gateway: with --engine-container NAME the script really stops that Docker
 container, sends --outage-requests requests (gateway answers 502), then starts it again and waits for readiness.
@@ -11,6 +12,7 @@ container, sends --outage-requests requests (gateway answers 502), then starts i
   generate_traffic.py --requests 300 [--url http://localhost:8080] [--engine-container is-engine]
 """
 import argparse
+import pathlib
 import collections
 import http.client
 import random
@@ -56,6 +58,7 @@ def main():
     a.add_argument("--requests", type=int, default=300)
     a.add_argument("--key", default=LOAD_KEY, help="API key for normal traffic (default: public dev key)")
     a.add_argument("--limited-key", default=LIMITED_KEY, help="key with a tiny rate limit (dev profile only)")
+    a.add_argument("--image-dir", help="directory of prepared 224x224 RGB PNGs (see prepare_replay_images.py) used for success/cache_hit traffic instead of generated images")
     a.add_argument("--seed", type=int, default=42)
     a.add_argument("--mix", default="success=60,cache_hit=25,invalid=10,rate_limited=5", help="relative weights")
     a.add_argument("--delay-ms", type=int, default=0)
@@ -65,6 +68,8 @@ def main():
     rng, c = random.Random(a.seed), Client(a.url)
     mix = {k: float(v) for k, v in (p.split("=") for p in a.mix.split(","))}
     seen, counts, nxt = [], collections.Counter(), 0
+    pool = [f.read_bytes() for f in sorted(pathlib.Path(a.image_dir).glob("*.png"))] if a.image_dir else []
+    used = 0
 
     def send(label, *args, **kw):
         counts[(label, c.call(*args, **kw))] += 1
@@ -74,7 +79,12 @@ def main():
         if kind == "cache_hit" and not seen:
             kind = "success"
         if kind == "success":
-            nxt += 1; seen.append(png(seed=nxt))
+            if pool and used < len(pool):    # replay each real image once (first sight = engine call), then reuse
+                used += 1; seen.append(pool[used - 1])
+            elif pool:
+                seen.append(rng.choice(pool))  # pool exhausted: repeats become cache hits, labelled "success" here
+            else:
+                nxt += 1; seen.append(png(seed=nxt))
             send(kind, "POST", "/api/v1/predict", seen[-1], a.key)
         elif kind == "cache_hit":
             send(kind, "POST", "/api/v1/predict", rng.choice(seen), a.key)

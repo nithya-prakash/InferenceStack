@@ -1,0 +1,235 @@
+{
+ "method": "see model/MODEL_CARD.md; split rule in evaluate_all.py",
+ "summary": {
+  "mean_auroc": 0.8861447660441686,
+  "min_auroc": 0.724495362793235,
+  "test_images": 1725
+ },
+ "categories": [
+  {
+   "category": "bottle",
+   "train_fit": 167,
+   "calibration": 42,
+   "test": 83,
+   "test_defective": 63,
+   "auroc": 0.9873015873015873,
+   "auroc_ci95": [
+    0.9660951152752921,
+    1.0
+   ],
+   "tpr": 0.8888888888888888,
+   "fpr": 0.0,
+   "threshold": 18.296588897705078
+  },
+  {
+   "category": "cable",
+   "train_fit": 179,
+   "calibration": 45,
+   "test": 150,
+   "test_defective": 92,
+   "auroc": 0.8288980509745127,
+   "auroc_ci95": [
+    0.7618349837340229,
+    0.8896374868551498
+   ],
+   "tpr": 0.0,
+   "fpr": 0.0,
+   "threshold": 31.151899337768555
+  },
+  {
+   "category": "capsule",
+   "train_fit": 175,
+   "calibration": 44,
+   "test": 132,
+   "test_defective": 109,
+   "auroc": 0.8324690865576386,
+   "auroc_ci95": [
+    0.7093638392857143,
+    0.9390720301966408
+   ],
+   "tpr": 0.43119266055045874,
+   "fpr": 0.13043478260869565,
+   "threshold": 19.49237632751465
+  },
+  {
+   "category": "carpet",
+   "train_fit": 224,
+   "calibration": 56,
+   "test": 117,
+   "test_defective": 89,
+   "auroc": 0.9622792937399678,
+   "auroc_ci95": [
+    0.9243386602153469,
+    0.9904307260245476
+   ],
+   "tpr": 0.8764044943820225,
+   "fpr": 0.03571428571428571,
+   "threshold": 11.841681480407715
+  },
+  {
+   "category": "grid",
+   "train_fit": 211,
+   "calibration": 53,
+   "test": 78,
+   "test_defective": 57,
+   "auroc": 0.8053467000835423,
+   "auroc_ci95": [
+    0.7069751794258374,
+    0.8953823109703652
+   ],
+   "tpr": 0.12280701754385964,
+   "fpr": 0.0,
+   "threshold": 12.903350830078125
+  },
+  {
+   "category": "hazelnut",
+   "train_fit": 313,
+   "calibration": 78,
+   "test": 110,
+   "test_defective": 70,
+   "auroc": 0.7767857142857143,
+   "auroc_ci95": [
+    0.6818663838812301,
+    0.8685709661189113
+   ],
+   "tpr": 0.14285714285714285,
+   "fpr": 0.025,
+   "threshold": 24.283130645751953
+  },
+  {
+   "category": "leather",
+   "train_fit": 196,
+   "calibration": 49,
+   "test": 124,
+   "test_defective": 92,
+   "auroc": 0.9911684782608695,
+   "auroc_ci95": [
+    0.9745401255005834,
+    1.0
+   ],
+   "tpr": 0.8913043478260869,
+   "fpr": 0.0,
+   "threshold": 12.055719375610352
+  },
+  {
+   "category": "metal_nut",
+   "train_fit": 176,
+   "calibration": 44,
+   "test": 115,
+   "test_defective": 93,
+   "auroc": 0.9574780058651026,
+   "auroc_ci95": [
+    0.9172881926174221,
+    0.9866680402930403
+   ],
+   "tpr": 0.5376344086021505,
+   "fpr": 0.0,
+   "threshold": 16.772193908691406
+  },
+  {
+   "category": "pill",
+   "train_fit": 214,
+   "calibration": 53,
+   "test": 167,
+   "test_defective": 141,
+   "auroc": 0.724495362793235,
+   "auroc_ci95": [
+    0.6109768663972228,
+    0.8283870745267804
+   ],
+   "tpr": 0.06382978723404255,
+   "fpr": 0.0,
+   "threshold": 21.175621032714844
+  },
+  {
+   "category": "screw",
+   "train_fit": 256,
+   "calibration": 64,
+   "test": 160,
+   "test_defective": 119,
+   "auroc": 0.7569174011067842,
+   "auroc_ci95": [
+    0.672114969801553,
+    0.8340083480614545
+   ],
+   "tpr": 0.10084033613445378,
+   "fpr": 0.0,
+   "threshold": 20.876773834228516
+  },
+  {
+   "category": "tile",
+   "train_fit": 184,
+   "calibration": 46,
+   "test": 117,
+   "test_defective": 84,
+   "auroc": 0.9224386724386725,
+   "auroc_ci95": [
+    0.8654067978636943,
+    0.968584050041213
+   ],
+   "tpr": 0.4880952380952381,
+   "fpr": 0.0,
+   "threshold": 15.965601921081543
+  },
+  {
+   "category": "toothbrush",
+   "train_fit": 48,
+   "calibration": 12,
+   "test": 42,
+   "test_defective": 30,
+   "auroc": 0.95,
+   "auroc_ci95": [
+    0.8787850935828877,
+    0.9944444444444444
+   ],
+   "tpr": 0.8666666666666667,
+   "fpr": 0.25,
+   "threshold": 13.34397029876709
+  },
+  {
+   "category": "transistor",
+   "train_fit": 170,
+   "calibration": 43,
+   "test": 100,
+   "test_defective": 40,
+   "auroc": 0.9199999999999999,
+   "auroc_ci95": [
+    0.8606638027536464,
+    0.9674703972498091
+   ],
+   "tpr": 0.325,
+   "fpr": 0.0,
+   "threshold": 23.793691635131836
+  },
+  {
+   "category": "wood",
+   "train_fit": 198,
+   "calibration": 49,
+   "test": 79,
+   "test_defective": 60,
+   "auroc": 0.9666666666666667,
+   "auroc_ci95": [
+    0.9279607094152681,
+    0.9944200536305798
+   ],
+   "tpr": 0.7666666666666667,
+   "fpr": 0.0,
+   "threshold": 16.688676834106445
+  },
+  {
+   "category": "zipper",
+   "train_fit": 192,
+   "calibration": 48,
+   "test": 151,
+   "test_defective": 119,
+   "auroc": 0.9099264705882353,
+   "auroc_ci95": [
+    0.8362785697442127,
+    0.9706079597988185
+   ],
+   "tpr": 0.3865546218487395,
+   "fpr": 0.0625,
+   "threshold": 14.555901527404785
+  }
+ ]
+}
