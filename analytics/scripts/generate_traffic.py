@@ -54,6 +54,8 @@ def main():
     a = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     a.add_argument("--url", default="http://localhost:8080")
     a.add_argument("--requests", type=int, default=300)
+    a.add_argument("--key", default=LOAD_KEY, help="API key for normal traffic (default: public dev key)")
+    a.add_argument("--limited-key", default=LIMITED_KEY, help="key with a tiny rate limit (dev profile only)")
     a.add_argument("--seed", type=int, default=42)
     a.add_argument("--mix", default="success=60,cache_hit=25,invalid=10,rate_limited=5", help="relative weights")
     a.add_argument("--delay-ms", type=int, default=0)
@@ -73,18 +75,18 @@ def main():
             kind = "success"
         if kind == "success":
             nxt += 1; seen.append(png(seed=nxt))
-            send(kind, "POST", "/api/v1/predict", seen[-1], LOAD_KEY)
+            send(kind, "POST", "/api/v1/predict", seen[-1], a.key)
         elif kind == "cache_hit":
-            send(kind, "POST", "/api/v1/predict", rng.choice(seen), LOAD_KEY)
+            send(kind, "POST", "/api/v1/predict", rng.choice(seen), a.key)
         elif kind == "invalid":
-            bad = rng.choice([("garbage", b"not an image", LOAD_KEY, "image/png"), ("wrong_size", png(64, 64), LOAD_KEY, "image/png"),
-                              ("grayscale", png(channels=1), LOAD_KEY, "image/png"), ("wrong_type", png(), LOAD_KEY, "text/plain"),
+            bad = rng.choice([("garbage", b"not an image", a.key, "image/png"), ("wrong_size", png(64, 64), a.key, "image/png"),
+                              ("grayscale", png(channels=1), a.key, "image/png"), ("wrong_type", png(), a.key, "text/plain"),
                               ("no_key", png(), None, "image/png"), ("bad_key", png(), "wrong-key", "image/png")])
             send("invalid:" + bad[0], "POST", "/api/v1/predict", bad[1], bad[2], bad[3])
         else:  # rate_limited: burst on the 5/min key; the first requests of a minute succeed, the rest get 429
             for _ in range(8):
                 nxt += 1
-                send(kind, "POST", "/api/v1/predict", png(seed=nxt), LIMITED_KEY)
+                send(kind, "POST", "/api/v1/predict", png(seed=nxt), a.limited_key)
         if a.delay_ms:
             time.sleep(a.delay_ms / 1000)
 
@@ -92,7 +94,7 @@ def main():
         subprocess.run(["docker", "stop", a.engine_container], check=True, capture_output=True)
         for _ in range(a.outage_requests):
             nxt += 1
-            send("engine_outage", "POST", "/api/v1/predict", png(seed=nxt), LOAD_KEY)
+            send("engine_outage", "POST", "/api/v1/predict", png(seed=nxt), a.key)
         subprocess.run(["docker", "start", a.engine_container], check=True, capture_output=True)
         for _ in range(60):
             try:

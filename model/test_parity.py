@@ -47,6 +47,14 @@ def test_parity_with_python_reference():
         np.testing.assert_allclose(heat[0], np.array(c["heatmap"]), rtol=ref["rtol"], atol=ref["atol"], err_msg=c["file"])
 
 
+def max_abs_diff():
+    worst = 0.0
+    for c in ref["cases"]:
+        score, heat = run(decode_serving((HERE / "test_data" / c["file"]).read_bytes()))
+        worst = max(worst, abs(float(score[0]) - c["score"]), float(np.abs(heat[0] - np.array(c["heatmap"])).max()))
+    return worst
+
+
 def test_batching_consistent():
     X = np.concatenate([decode_serving((HERE / "test_data" / c["file"]).read_bytes()) for c in ref["cases"]])
     batch = run(X)[0]
@@ -77,3 +85,4 @@ if __name__ == "__main__":
     for t in tests:
         t()
         print("PASS", t.__name__)
+    print(f"max abs difference vs Python reference over {len(ref['cases'])} cases (scores and heatmaps): {max_abs_diff():.2e}")
