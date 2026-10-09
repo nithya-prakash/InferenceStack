@@ -1,0 +1,62 @@
+# Local development stack. Not production-ready: no TLS, single instances, in-memory cache/rate limit.
+#   ./scripts/init-env.sh && docker compose up -d --build
+# Gateway http://localhost:8080 | Dashboard http://localhost:8501 | PostgreSQL and the engine are not published to the host.
+name: inferencestack
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: inferencestack
+      POSTGRES_USER: inferencestack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./scripts/init-env.sh first}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inferencestack -d inferencestack"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  engine:
+    build: {context: ., dockerfile: engine/Dockerfile, target: runtime}
+    environment:
+      ENGINE_INTRA_OP_THREADS: "2"
+
+  gateway:
+    build: {context: gateway}
+    depends_on:
+      postgres: {condition: service_healthy}
+      engine: {condition: service_healthy}
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/inferencestack
+      DB_USER: inferencestack
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      ENGINE_URL: http://engine:8081
+      GATEWAY_API_KEYS_0_ID: local-client
+      GATEWAY_API_KEYS_0_SHA256: ${GATEWAY_API_KEY_SHA256:?run ./scripts/init-env.sh first}
+      GATEWAY_API_KEYS_0_REQUESTS_PER_MINUTE: "600"
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  dbt:   # one-shot: builds staging views + marts + runs tests. Re-run later: docker compose run --rm dbt build
+    build: {context: analytics/dbt_project, dockerfile: ../Dockerfile.dbt}
+    command: ["build"]
+    restart: "no"
+    depends_on:
+      gateway: {condition: service_healthy}   # the gateway's Flyway migration creates request_log
+    environment: &db
+      DB_HOST: postgres
+      DB_NAME: inferencestack
+      DB_USER: inferencestack
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+  dashboard:
+    build: {context: analytics/dashboard}
+    depends_on:
+      dbt: {condition: service_completed_successfully}
+    environment: *db
+    ports:
+      - "127.0.0.1:8501:8501"
+
+volumes:
+  pgdata:

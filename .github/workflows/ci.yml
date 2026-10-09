@@ -1,0 +1,43 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  model:
+    name: Model artifact parity (ONNX vs Python reference)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -q numpy==2.5.3 onnxruntime==1.31.0 pillow==12.3.0
+          .venv/bin/python model/test_parity.py
+  engine:
+    name: C++ engine (build + GoogleTest in Docker)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - run: docker build -f engine/Dockerfile --target test -t engine-test .
+      - run: docker run --rm engine-test
+  gateway:
+    name: Java gateway (unit + integration tests with PostgreSQL and the real engine)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - run: gateway/run-tests.sh
+  analytics:
+    name: dbt build/tests, hand-computed mart checks, dashboard test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - run: analytics/scripts/verify.sh
+  e2e:
+    name: Docker Compose end-to-end
+    runs-on: ubuntu-24.04
+    needs: [model, engine, gateway, analytics]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - run: scripts/e2e.sh

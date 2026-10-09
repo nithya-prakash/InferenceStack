@@ -26,5 +26,6 @@ COPY model/artifacts /app/model/artifacts
 RUN ldconfig
 ENV ENGINE_MODEL_DIR=/app/model/artifacts ENGINE_PORT=8081
 USER engine
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 CMD ["engine", "--healthcheck"]
 EXPOSE 8081
 CMD ["engine"]
